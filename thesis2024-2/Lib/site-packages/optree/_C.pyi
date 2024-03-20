@@ -1,0 +1,121 @@
+# Copyright 2022-2023 MetaOPT Team. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+
+# pylint: disable=all
+
+import builtins
+import enum
+from collections.abc import Callable, Iterable, Sequence
+from typing import Any
+
+from optree.typing import CustomTreeNode, FlattenFunc, MetaData, PyTree, T, U, UnflattenFunc
+
+class InternalError(RuntimeError): ...
+
+MAX_RECURSION_DEPTH: int
+
+# Set if the type allows subclassing (see CPython's Include/object.h)
+Py_TPFLAGS_BASETYPE: int  # (1UL << 10)
+
+GLIBCXX_USE_CXX11_ABI: bool
+
+def flatten(
+    tree: PyTree[T],
+    leaf_predicate: Callable[[T], bool] | None = None,
+    node_is_leaf: bool = False,
+    namespace: str = '',
+) -> builtins.tuple[list[T], PyTreeSpec]: ...
+def flatten_with_path(
+    tree: PyTree[T],
+    leaf_predicate: Callable[[T], bool] | None = None,
+    node_is_leaf: bool = False,
+    namespace: str = '',
+) -> builtins.tuple[list[builtins.tuple[Any, ...]], list[T], PyTreeSpec]: ...
+def is_leaf(
+    obj: T,
+    leaf_predicate: Callable[[T], bool] | None = None,
+    node_is_leaf: bool = False,
+    namespace: str = '',
+) -> bool: ...
+def all_leaves(
+    iterable: Iterable[T],
+    leaf_predicate: Callable[[T], bool] | None = None,
+    node_is_leaf: bool = False,
+    namespace: str = '',
+) -> bool: ...
+def leaf(node_is_leaf: bool = False) -> PyTreeSpec: ...
+def none(node_is_leaf: bool = False) -> PyTreeSpec: ...
+def tuple(treespecs: Sequence[PyTreeSpec], node_is_leaf: bool = False) -> PyTreeSpec: ...
+def is_namedtuple(obj: object | type) -> bool: ...
+def is_namedtuple_class(cls: type) -> bool: ...
+def namedtuple_fields(obj: builtins.tuple | type[builtins.tuple]) -> builtins.tuple[str, ...]: ...
+def is_structseq(obj: object | type) -> bool: ...
+def is_structseq_class(cls: type) -> bool: ...
+def structseq_fields(obj: builtins.tuple | type[builtins.tuple]) -> builtins.tuple[str, ...]: ...
+
+class PyTreeKind(enum.IntEnum):
+    CUSTOM = 0  # a custom type
+    LEAF = enum.auto()  # an opaque leaf node
+    NONE = enum.auto()  # None
+    TUPLE = enum.auto()  # a tuple
+    LIST = enum.auto()  # a list
+    DICT = enum.auto()  # a dict
+    NAMEDTUPLE = enum.auto()  # a collections.namedtuple
+    ORDEREDDICT = enum.auto()  # a collections.OrderedDict
+    DEFAULTDICT = enum.auto()  # a collections.defaultdict
+    DEQUE = enum.auto()  # a collections.deque
+    STRUCTSEQUENCE = enum.auto()  # a PyStructSequence
+
+class PyTreeSpec:
+    num_nodes: int
+    num_leaves: int
+    num_children: int
+    none_is_leaf: bool
+    namespace: str
+    type: builtins.type | None
+    kind: PyTreeKind
+    def unflatten(self, leaves: Iterable[T]) -> PyTree[T]: ...
+    def flatten_up_to(self, full_tree: PyTree[T]) -> list[PyTree[T]]: ...
+    def broadcast_to_common_suffix(self, other: PyTreeSpec) -> PyTreeSpec: ...
+    def compose(self, inner_treespec: PyTreeSpec) -> PyTreeSpec: ...
+    def walk(
+        self,
+        f_node: Callable[[builtins.tuple[U, ...], MetaData], U],
+        f_leaf: Callable[[T], U] | None,
+        leaves: Iterable[T],
+    ) -> U: ...
+    def is_prefix(self, other: PyTreeSpec, strict: bool = False) -> bool: ...
+    def is_suffix(self, other: PyTreeSpec, strict: bool = False) -> bool: ...
+    def paths(self) -> list[builtins.tuple[Any, ...]]: ...
+    def entries(self) -> list[Any]: ...
+    def entry(self, index: int) -> Any: ...
+    def children(self) -> list[PyTreeSpec]: ...
+    def child(self, index: int) -> PyTreeSpec: ...
+    def is_leaf(self, strict: bool = True) -> bool: ...
+    def __eq__(self, other: object) -> bool: ...
+    def __ne__(self, other: object) -> bool: ...
+    def __lt__(self, other: object) -> bool: ...
+    def __le__(self, other: object) -> bool: ...
+    def __gt__(self, other: object) -> bool: ...
+    def __ge__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
+    def __len__(self) -> int: ...
+
+def register_node(
+    cls: type[CustomTreeNode[T]],
+    flatten_func: FlattenFunc,
+    unflatten_func: UnflattenFunc,
+    namespace: str,
+) -> None: ...
